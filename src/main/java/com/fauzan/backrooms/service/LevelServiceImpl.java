@@ -1,17 +1,51 @@
 package com.fauzan.backrooms.service;
 
+import com.fauzan.backrooms.dto.EdgeResponse;
+import com.fauzan.backrooms.dto.GraphResponse;
+import com.fauzan.backrooms.dto.NodeResponse;
 import com.fauzan.backrooms.entity.Level;
+import com.fauzan.backrooms.enums.Difficulty;
 import com.fauzan.backrooms.repository.LevelRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 public class LevelServiceImpl implements LevelService {
-    private LevelRepository levelRepository;
+    private final LevelRepository levelRepository;
     public LevelServiceImpl(LevelRepository levelRepository) {
         this.levelRepository = levelRepository;
+    }
+
+    @Override
+    public GraphResponse getAllNodesAndEdges() {
+        List<Level> levels = levelRepository.findAll();
+        List<NodeResponse> nodeResponses = new ArrayList<>();
+        List<EdgeResponse> edgeResponses = new ArrayList<>();
+        levels.forEach(level -> {
+            String color;
+            if (level.getDifficulty() != null) {
+                switch (level.getDifficulty()) {
+                    case 0 -> color = Difficulty.ZERO.getHexColor();
+                    case 1 -> color = Difficulty.ONE.getHexColor();
+                    case 2 -> color = Difficulty.TWO.getHexColor();
+                    case 3 -> color = Difficulty.THREE.getHexColor();
+                    case 4 -> color = Difficulty.FOUR.getHexColor();
+                    case 5 -> color = Difficulty.FIVE.getHexColor();
+                    default -> color = Difficulty.UNKNOWN.getHexColor();
+                }
+            } else {
+                color = Difficulty.UNKNOWN.getHexColor();
+            }
+            nodeResponses.add(new NodeResponse(level.getUrl(), level.getName(), color));
+            level.getExits().forEach(exit -> {
+                edgeResponses.add(new EdgeResponse(level.getUrl(), exit.getUrl()));
+            });
+        });
+        return new GraphResponse(nodeResponses, edgeResponses);
     }
 
     @Transactional
@@ -31,6 +65,9 @@ public class LevelServiceImpl implements LevelService {
         source.addExit(targetExit);
         levelRepository.save(source);
     }
+
+
+
     @Override
     public Level upsert(Level currentLevel) {
         Optional<Level> storedLevel = levelRepository.findByUrl(currentLevel.getUrl());
