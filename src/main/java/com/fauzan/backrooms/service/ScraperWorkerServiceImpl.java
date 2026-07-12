@@ -1,6 +1,7 @@
 package com.fauzan.backrooms.service;
 
 import com.fauzan.backrooms.Graph;
+import com.fauzan.backrooms.UrlNormalizer;
 import com.fauzan.backrooms.entity.Level;
 import com.fauzan.backrooms.enums.Difficulty;
 import org.openqa.selenium.By;
@@ -42,7 +43,7 @@ public class ScraperWorkerServiceImpl implements ScraperWorkerService {
             Map<String, Boolean> marked = new HashMap<>();
             Graph graph = new Graph();
             Deque<String> queue = new ArrayDeque<>();
-            String starterLink = "https://backrooms-wiki.wikidot.com/level-0";
+            String starterLink = "https://backrooms-wiki.wikidot.com/level-0/";
             queue.offer(starterLink);
             marked.put(starterLink, true);
             while (!queue.isEmpty()) {
@@ -74,13 +75,13 @@ public class ScraperWorkerServiceImpl implements ScraperWorkerService {
                     System.out.println(Difficulty.UNKNOWN);
                 }
 
-                String currentLink = driver.getCurrentUrl();
+                String currentLink = UrlNormalizer.normalize(driver.getCurrentUrl());
                 System.out.println(currentLink);
                 currentLevel.setUrl(currentLink);
                 levelService.upsert(currentLevel);
                 for (Iterator<WebElement> it = exitLinks.iterator(); it.hasNext();) {
                     WebElement element = it.next();
-                    String nextLink = element.getAttribute("href");
+                    String nextLink = UrlNormalizer.normalize(element.getAttribute("href"));
                     if (nextLink != null && !nextLink.startsWith("javascript") && !nextLink.contains("object") && !nextLink.contains("entity") && !nextLink.contains("entities")) {
                         graph.add(currentLink);
                         graph.addEdge(currentLink, nextLink);
