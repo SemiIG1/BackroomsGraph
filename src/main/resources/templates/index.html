@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The Backrooms Topology</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+</head>
+<body class="bg-light">
+<!-- Navbar (Height ~56px) -->
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">Backrooms Topology Map</span>
+        <a href="https://github.com/SemiIG1/BackroomsGraph" class="text-white">View Source Code</a>
+    </div>
+</nav>
+
+<div class="container-fluid p-0 d-flex flex-column">
+
+    <div class="d-flex flex-wrap justify-content-center align-items-center p-2 bg-white border-bottom shadow-sm">
+        <b class="me-3">Survival Difficulty:</b>
+        <div class="d-flex align-items-center me-3">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #F7E375; border: 1px solid #ccc;"></span>
+            <small>Class 0</small>
+        </div>
+        <div class="d-flex align-items-center me-3">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #FFC90E; border: 1px solid #ccc;"></span>
+            <small>Class 1</small>
+        </div>
+        <div class="d-flex align-items-center me-3">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #F59C00; border: 1px solid #ccc;"></span>
+            <small>Class 2</small>
+        </div>
+        <div class="d-flex align-items-center me-3">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #F95A00; border: 1px solid #ccc;"></span>
+            <small>Class 3</small>
+        </div>
+        <div class="d-flex align-items-center me-3">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #FE1701; border: 1px solid #ccc;"></span>
+            <small>Class 4</small>
+        </div>
+        <div class="d-flex align-items-center me-0">
+            <span class="rounded-circle me-1" style="width: 15px; height: 15px; background-color: #AF0606; border: 1px solid #ccc;"></span>
+            <small>Class 5</small>
+        </div>
+    </div>
+
+    <div class="overflow-hidden bg-white" style="height: calc(100vh - 56px);" id="mynetwork"></div>
+
+    <div class="bg-white border-top shadow-sm p-3">
+        <div class="row align-items-end justify-content-center">
+            <div class="col-md-2 mb-3 mb-md-0">
+                <label for="mode" class="form-label fw-bold">Mode</label>
+                <select class="form-select" id="mode">
+                    <option value="Closest">Closest</option>
+                    <option value="Safest">Safest</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <label for="startLevel" class="form-label fw-bold">Origin </label>
+                <select class="form-select" id="startLevel">
+                    <option value="" selected disabled>Select Start...</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <label for="destLevel" class="form-label fw-bold">Destination </label>
+                <select class="form-select" id="destLevel">
+                    <option value="" selected disabled>Select Destination...</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100 fw-bold" onclick="calculateRoute()">Find Route</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/javascript">
+    async function getDataAndDisplayAll() {
+        const url = "http://localhost:8080/api/graph";
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Response status: ${response.status}`);
+            }
+            const result = await response.json();
+
+            var nodes = new vis.DataSet(result.nodes);
+            var edges = new vis.DataSet(result.edges);
+            var container = document.getElementById("mynetwork");
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            var options = {
+                nodes: {
+                    font: { strokeWidth: 3 },
+                    shape: "dot"
+                },
+                edges: {
+                    arrows: {
+                        to: { enabled: true, scaleFactor: 0.2 }
+                    }
+                },
+                physics: {
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -100,
+                        springLength: 100,
+                        springConstant: 0.08,
+                        avoidOverlap: 1.0
+                    }
+                }
+            };
+            var network = new vis.Network(container, data, options);
+            const startSelect = document.getElementById("startLevel");
+            const destSelect = document.getElementById("destLevel");
+
+            const sortedNodes = result.nodes.sort((a, b) => {
+                const labelA = a.label || "Unnamed Level";
+                const labelB = b.label || "Unnamed Level";
+                labelA.localeCompare(labelB, undefined, {numeric: true})
+            });
+            sortedNodes.forEach(node => {
+                let opt1 = document.createElement('option');
+                opt1.value = node.id;
+                opt1.textContent = node.label || `Node ID: ${node.id}`;
+                startSelect.appendChild(opt1);
+
+                let opt2 = document.createElement('option');
+                opt2.value = node.id;
+                opt2.textContent = node.label || `Node ID: ${node.id}`;
+                destSelect.appendChild(opt2);
+            });
+        } catch (error) {
+            console.error("Failed to load graph data:", error.message);
+            // Fallback dummy data if backend is offline, just to show the UI works
+            document.getElementById('mynetwork').innerHTML = '<div class="d-flex justify-content-center align-items-center h-100 text-muted">Backend is offline or unreachable. Please start the Spring Boot server.</div>';
+        }
+    }
+
+    // Setup a dummy function for the routing button
+    function calculateRoute() {
+        const start = document.getElementById('startLevel').value;
+        const dest = document.getElementById('destLevel').value;
+        alert(`Ready to implement BFS logic from ${start} to ${dest}!`);
+    }
+
+    getDataAndDisplayAll();
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>

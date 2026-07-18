@@ -13,6 +13,10 @@ public class LevelController {
     public LevelController(ScraperWorkerService scraperWorkerService) {
         this.scraperWorkerService = scraperWorkerService;
     }
+    @GetMapping("/map")
+    public String showMapForUser(Model model) {
+        return "index";
+    }
     @GetMapping("/admin/map")
     public String showMap(Model model) {
         model.addAttribute("isScraperRunning", scraperWorkerService.isRunning());
