@@ -129,7 +129,7 @@
             const sortedNodes = result.nodes.sort((a, b) => {
                 const labelA = a.label || "Unnamed Level";
                 const labelB = b.label || "Unnamed Level";
-                labelA.localeCompare(labelB, undefined, {numeric: true})
+                return labelA.localeCompare(labelB, undefined, {numeric: true})
             });
             sortedNodes.forEach(node => {
                 let opt1 = document.createElement('option');
