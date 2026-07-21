@@ -8,23 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 public class LevelController {
-    private final ScraperWorkerService scraperWorkerService;
 
-    public LevelController(ScraperWorkerService scraperWorkerService) {
-        this.scraperWorkerService = scraperWorkerService;
-    }
     @GetMapping("/map")
     public String showMapForUser(Model model) {
         return "index";
     }
-    @GetMapping("/admin/map")
-    public String showMap(Model model) {
-        model.addAttribute("isScraperRunning", scraperWorkerService.isRunning());
-        return "map";
-    }
-    @PostMapping("/admin/refresh-data")
-    public String refreshData(Model model) {
-        scraperWorkerService.runScraperInBackground();
-        return "redirect:/admin/map";
-    }
+
 }
