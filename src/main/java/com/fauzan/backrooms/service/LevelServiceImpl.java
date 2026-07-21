@@ -1,5 +1,7 @@
 package com.fauzan.backrooms.service;
 
+import com.fauzan.backrooms.Graph;
+import com.fauzan.backrooms.Paths;
 import com.fauzan.backrooms.dto.EdgeResponse;
 import com.fauzan.backrooms.dto.GraphResponse;
 import com.fauzan.backrooms.dto.NodeResponse;
@@ -10,6 +12,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +49,20 @@ public class LevelServiceImpl implements LevelService {
             });
         });
         return new GraphResponse(nodeResponses, edgeResponses);
+    }
+
+    @Override
+    public List<String> getClosestRoute(String start, String end) {
+        List<Level> levels = levelRepository.findAll();
+        Graph graph = new Graph();
+        levels.forEach(level -> {
+            graph.add(level.getUrl());
+            level.getExits().forEach(exit -> graph.addEdge(level.getUrl(), exit.getUrl()));
+        });
+        Paths paths = new Paths();
+        paths.breadthFirstSearch(graph, start);
+        Deque<String> path = paths.pathTo(end);
+        return path.stream().toList();
     }
 
     @Transactional

@@ -18,4 +18,8 @@ public class Graph {
     public void print() {
 
     }
+    public LinkedList<String> getAdjacent(String vertex) {
+        return graph.get(vertex);
+    }
+
 }
