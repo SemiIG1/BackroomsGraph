@@ -49,6 +49,7 @@
     <div class="overflow-hidden bg-white" style="height: calc(100vh - 56px);" id="mynetwork"></div>
 
     <div class="bg-white border-top shadow-sm p-3">
+        <div id="routeError" class="alert alert-danger d-none py-2" role="alert"></div>
         <div class="row align-items-end justify-content-center">
             <div class="col-md-2 mb-3 mb-md-0">
                 <label for="mode" class="form-label fw-bold">Mode</label>
@@ -78,6 +79,9 @@
 </div>
 
 <script type="text/javascript">
+    let globalNodes;
+    let globalEdges;
+    let network;
     async function getDataAndDisplayAll() {
         const url = "http://localhost:8080/api/graph";
         try {
@@ -86,13 +90,17 @@
                 throw new Error(`Response status: ${response.status}`);
             }
             const result = await response.json();
-
-            var nodes = new vis.DataSet(result.nodes);
-            var edges = new vis.DataSet(result.edges);
+            // Store original colors so we can restore them when highlighting routes
+            const nodesWithMemory = result.nodes.map(n => {
+                n.originalColor = n.color;
+                return n;
+            });
+            globalNodes = new vis.DataSet(nodesWithMemory);
+            globalEdges = new vis.DataSet(result.edges);
             var container = document.getElementById("mynetwork");
             var data = {
-                nodes: nodes,
-                edges: edges
+                nodes: globalNodes,
+                edges: globalEdges
             };
             var options = {
                 nodes: {
@@ -114,7 +122,7 @@
                     }
                 }
             };
-            var network = new vis.Network(container, data, options);
+            network = new vis.Network(container, data, options);
             const startSelect = document.getElementById("startLevel");
             const destSelect = document.getElementById("destLevel");
 
@@ -136,16 +144,82 @@
             });
         } catch (error) {
             console.error("Failed to load graph data:", error.message);
-            // Fallback dummy data if backend is offline, just to show the UI works
             document.getElementById('mynetwork').innerHTML = '<div class="d-flex justify-content-center align-items-center h-100 text-muted">Backend is offline or unreachable. Please start the Spring Boot server.</div>';
         }
     }
+    function showError(message) {
+        const errorBox = document.getElementById('routeError');
+        errorBox.textContent = message;
+        errorBox.classList.remove('d-none');
+    }
 
-    // Setup a dummy function for the routing button
+    function hideError() {
+        document.getElementById('routeError').classList.add('d-none');
+    }
+
     function calculateRoute() {
+        hideError();
         const start = document.getElementById('startLevel').value;
         const dest = document.getElementById('destLevel').value;
-        alert(`Ready to implement BFS logic from ${start} to ${dest}!`);
+
+        if (!start || !dest) {
+            showError("Please select both a Start and Destination node.");
+            return;
+        }
+        if (start === dest) {
+            showError("Start and Destination cannot be the same level.");
+            return;
+        }
+
+        fetch(`/api/route?start=${start}&end=${dest}`)
+            .then(response => {
+                if (!response.ok) throw new Error("Backend route API threw an error.");
+                return response.json();
+            })
+            .then(path => {
+                if (path.length === 0) {
+                    showError("No valid route exists between these levels.");
+                    return;
+                }
+
+                const updateNodes = globalNodes.get().map(n => {
+                    const isPathNode = path.includes(n.id) || path.includes(String(n.id));
+
+                    if (isPathNode) {
+                        return { id: n.id, color: n.originalColor || null, font: { color: '#000', size: 16 } };
+                    } else {
+                        return {
+                            id: n.id,
+                            color: { background: '#dbeafe', border: '#93c5fd' },
+                            font: { color: '#94a3b8', size: 14 }
+                        };
+                    }
+                });
+                globalNodes.update(updateNodes);
+
+                const updateEdges = globalEdges.get().map(e => {
+                    let isPathEdge = false;
+                    for (let i = 0; i < path.length - 1; i++) {
+                        if (e.from == path[i] && e.to == path[i + 1]) {
+                            isPathEdge = true;
+                            break;
+                        }
+                    }
+                    if (isPathEdge) {
+                        return { id: e.id, color: { color: '#ef4444' }, width: 3 }; // Red route line
+                    } else {
+                        return { id: e.id, color: { color: '#e2e8f0' }, width: 1 }; // Faded grey/blue line
+                    }
+                });
+                globalEdges.update(updateEdges);
+
+                // Camera focus
+                network.fit({ nodes: path, animation: true });
+            })
+            .catch(error => {
+                console.error("Routing error:", error);
+                showError("Backend API is offline or unreachable.");
+            });
     }
 
     getDataAndDisplayAll();
