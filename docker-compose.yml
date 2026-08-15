@@ -1,9 +1,10 @@
 services:
   backroomsgraph:
-    image: mfauzanrizkyagusta/backroomsgraph:1.0.0
+    image: mfauzanrizkyagusta/backroomsgraph:1.1.0
     container_name: backroomsgraph
     depends_on:
       - db
+      - chrome
     ports:
       - "8080:8080"
     environment:
@@ -11,7 +12,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_PROFILES_ACTIVE: prod
+      SELENIUM_REMOTE_URL: ${SELENIUM_REMOTE_URL}
     restart: unless-stopped
+  chrome:
+    image: selenium/standalone-chrome:latest
   db:
     image: postgres:15-alpine
     container_name: backroomsgraph_db
