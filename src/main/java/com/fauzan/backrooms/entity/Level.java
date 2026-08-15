@@ -71,6 +71,10 @@ public class Level {
         exits.add(level);
     }
 
+    public void clearAllExits() {
+        exits.clear();
+    }
+
     public Set<Level> getExits() {
         return exits;
     }
